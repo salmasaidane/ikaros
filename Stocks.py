@@ -25,6 +25,7 @@ def as_of_date_to_quarter (dt):
     Q = int((int(month) - 0.01)/ 3) + 1
     return str(Q)+'Q'+ str(year)
 
+
 def normalize (x):
     x[x>0.001] = x[x>0.001] / x[x>0.001].sum()
     x[x<0.001] = x[x<0.001] / - x[x<0.001].sum()
