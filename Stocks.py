@@ -7,7 +7,6 @@ Created on Sat Jan  2 14:45:14 2021
 
 import os
 from bs4 import BeautifulSoup
-import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -16,7 +15,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 from yahooquery import Ticker    
 import functools
-from numpy.linalg import inv
 from textblob import TextBlob
 
 
@@ -24,12 +22,6 @@ def as_of_date_to_quarter (dt):
     month, year = dt.month, dt.year
     Q = int((int(month) - 0.01)/ 3) + 1
     return str(Q)+'Q'+ str(year)
-
-
-def normalize (x):
-    x[x>0.001] = x[x>0.001] / x[x>0.001].sum()
-    x[x<0.001] = x[x<0.001] / - x[x<0.001].sum()
-    return x
 
 def pandas_csv_cache(folder, file_template, expiration_in_sec,
                      read_csv_kwargs={'sep', '|'}, to_csv_kwargs={'sep': '|'}):
@@ -323,112 +315,7 @@ class Stock(object):
             raise KeyError('Item not Found!')
             
 
-def Price_to_Sales_Signal (stock_object, raw = True, window = 21):
-    if raw:
-        return stock_object['PriceClose'] / stock_object['TotalRevenue']
-    else:
-        return (stock_object['PriceClose'] / stock_object['TotalRevenue']).rolling(window = window).apply(lambda x: (x[-1] - x.mean())/(x.std()))
-      
-        
-      
-def Insider_Flow_Signal(stock_obj, window=90, hl = 45):
-    insider_trade_df = stock_obj.insider_trading_data
-    insider_trade_df['Sign'] = insider_trade_df['Transaction'].apply( lambda x: -1 if x == 'Sale' else 1 if x == 'Buy' else 0 )
-    insider_trade_df['NetValue'] = insider_trade_df['Value'] * insider_trade_df['Sign']
-    insider_trade_df['Datetime'] = pd.to_datetime(insider_trade_df['Date'])
     
-    raw_weights= np.array([(0.5**(1/hl))**i  for i in range(window-1,-1,-1)])
-    scaled_weights =  window * (raw_weights / sum(raw_weights))
-    net_value_ts = insider_trade_df.set_index('Datetime')\
-                                .loc[:, 'NetValue'].resample('D')\
-                                .sum().rolling(window=window)\
-                                .apply(lambda x: sum(x * scaled_weights))
-                                
-    net_value_ts.index = net_value_ts.index.map(lambda x: x.date())
-    mkt_value_ts = stock_obj['ShareIssued']*stock_obj['PriceClose']
-    signal_ts = net_value_ts/mkt_value_ts
-    signal_ts = signal_ts.loc[stock_obj['PriceClose'].index] 
-    return signal_ts
-
-
-def Price_target_to_Price_Signal(stock_obj):
-    ratings_df = stock_obj.ratings_data
-    ratings_df['DateTime'] =  pd.to_datetime(ratings_df['RatingDate'])
-    PT_ts = ratings_df.set_index('DateTime').loc[:, 'NewPT'].resample('D').mean()
-    PT_ts.index = PT_ts.index.map(lambda x: x.date())
-    PT_ts = PT_ts.reindex(stock_obj['PriceClose'].index).ffill()
-    signal_ts = (PT_ts - stock_obj['PriceClose']) / stock_obj['PriceClose']
-    return signal_ts
-    
-'''   
-def Price_to_Earnings (stock_object, raw = True, window = 21):
-    if raw:
-        return stock_object['PriceClose'] / stock_object['RetainedEarnings']
-    else:
-        return (stock_object['PriceClose'] / stock_object['RetainedEarnings']).rolling(window = window).apply(lambda x: (x[-1] - x.mean())/(x.std()))
- #Condition on PE within a range, else return 0
- #Column PeRatio in dataset
-    
-def quick_ratio():
-    return 
-
-
-    
-def altman_Z_Score():
-    return -1
-
-'''    
-    
-def build_view(signal_func, stock_arr, n_buckets = None):
-    stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
-    output_dict = {}
-    for s in stock_arr:
-        output_dict[s.ticker] = signal_func(s)
-    signal_df = pd.DataFrame(output_dict).dropna()
-    if n_buckets is None:
-        view_df = signal_df.rank(pct = True, axis = 1).apply(lambda x: x - x.mean(), axis = 1).apply(lambda x: normalize(x), axis = 1)
-    else:
-        view_df = signal_df.apply(lambda x: pd.qcut(x, n_buckets, labels = False), axis = 1)
-        big_bucket_idx = view_df == (n_buckets - 1)
-        small_bucket_idx = view_df == 0
-        view_df.loc[:,:] = 0
-        view_df[big_bucket_idx] = 1
-        view_df[small_bucket_idx] = -1
-        view_df = view_df.apply(lambda x: normalize(x), axis = 1)
-
-    return view_df
-  
-'''      
-signal_func = lambda s: (s['PriceClose'] / s['TotalRevenue']).rolling(window=21).apply(lambda x: (x[-1] - x.mean())/(x.std()))
-  
-df = build_view(signal_func, stock_arr = ['FB', 'AAPL', 'MSFT', 'NFLX', 'GOOGL'], n_buckets = 3)
-'''      
-        
-def build_returns (stock_arr):
-    stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
-    output_dict = {}
-    for s in stock_arr:
-        output_dict[s.ticker] = s['PriceClose']
-    price_df = pd.DataFrame(output_dict).dropna()
-    returns_df = price_df.pct_change(1)
-    return returns_df
-
-def build_weights (stock_arr):
-    stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
-    output_dict = {}
-    for s in stock_arr:
-        output_dict[s.ticker] = s['PriceClose'] * s['ShareIssued']
-    marketcap_df = pd.DataFrame(output_dict).dropna()   
-    weights_df = marketcap_df.apply(lambda x: normalize(x), axis = 1)
-    return weights_df
-
-def black_litterman_weights(stock_universe, view_arr, tau=1.0, lam=0.5 ):
-    stock_universe = [Stock(s) if isinstance(s, str) else s for s in stock_universe]   
-    weights_df = build_weights(stock_universe).iloc[-1,:]
-    returns_df = build_returns(stock_universe)
-    Sigma = returns_df.cov() * 252  
-    Pi = 2 * lam * Sigma.dot(weights_df)
-        
 
         
         
