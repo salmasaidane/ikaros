@@ -6,6 +6,7 @@ Created on Sat Feb 13 13:59:04 2021
 """
 
 import pandas as pd
+import numpy as np
 from Stock import Stock
 from scipy.stats import norm
 
@@ -107,7 +108,6 @@ class PairTradingPortfolio(object):
 
         self.portfolio_return_ts = self.stock_obj1_wght_ts.shift(1) * self.stock_obj1_return + \
         self.stock_obj2_wght_ts.shift(1) * self.stock_obj2_return
-
     
     def get_returns(self):
         self.portfolio_return_ts = self.stock_obj1_wght_ts.shift(1) * self.stock_obj1_return + \
@@ -116,11 +116,32 @@ class PairTradingPortfolio(object):
     
         
         
+class SingleSignalPortfolio(object):
+
+    def __init__(self, stock_obj_arr, signal_func):
+        self.stock_obj_arr = stock_obj_arr
+        self.signal_func = signal_func
+        self.n_stocks = len(stock_obj_arr)
+        self.signal_df = None
+        returns_dict = {}
+        for stock_obj in self.stock_obj_arr:
+            returns_dict[stock_obj.ticker] = stock_obj['PriceClose'].pct_change(1)
+        self.returns_df = pd.DataFrame(returns_dict).dropna()
         
         
-        
-        
-        
+    def relative_ranking(self):
+        signal_dict = {}
+        for stock_obj in self.stock_obj_arr:
+            stock_signal_ts = self.signal_func(stock_obj)
+            stock_ticker = stock_obj.ticker
+            signal_dict[stock_ticker] = stock_signal_ts
+        self.signal_df = pd.DataFrame(signal_dict)
+        self.weight_df = self.signal_df.apply( lambda x: 2*((x.rank() - 1) / ( np.sum(~np.isnan(x)) - 1)) - 1, axis=1).fillna(0)
+        pass
+    
+    def get_returns(self):
+        self.portfolio_return_ts = (self.weight_df.shift(1) * self.returns_df).sum(axis = 1)
+        return self.portfolio_return_ts
         
         
         

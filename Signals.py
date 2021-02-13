@@ -16,7 +16,15 @@ def Price_to_Sales_Signal (stock_object, raw = True, window = 21):
         return (stock_object['PriceClose'] / stock_object['TotalRevenue']).rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
       
         
-      
+def Quick_Ratio_Signal(stock_object,  raw = True, window = 21):
+    raw_signal = (stock_object['CurrentAssets'] - stock_object['Inventory'])\
+            / stock_object['CurrentLiabilities']
+    if raw:
+        return raw_signal
+    else:
+        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+        
+    
 def Insider_Flow_Signal(stock_obj, window=90, hl = 45):
     insider_trade_df = stock_obj.insider_trading_data
     insider_trade_df['Sign'] = insider_trade_df['Transaction'].apply( lambda x: -1 if x == 'Sale' else 1 if x == 'Buy' else 0 )

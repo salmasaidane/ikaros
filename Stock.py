@@ -20,7 +20,7 @@ import functools
 from textblob import TextBlob
 
 
-library_folder = r'D:\Data'
+library_folder = r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library'
 
 def as_of_date_to_quarter (dt):
     month, year = dt.month, dt.year
@@ -295,10 +295,20 @@ class Stock(object):
                                                                 'close': 'PriceClose' 
                                                                 })
         self.financial_data = self.get_all_financial_data(fundamental_frequency=fundamental_frequency)
-        self.ratings_data = get_finviz_fundamentals_ratings(ticker)
-        self.insider_trading_data = get_finviz_inside_trading(ticker)
-        self.news_data = get_finviz_news(ticker)
-        
+        try:
+            self.ratings_data = get_finviz_fundamentals_ratings(ticker)
+        except:
+            self.ratings_data = None
+        try:
+            self.insider_trading_data = get_finviz_inside_trading(ticker)
+        except:
+            self.insider_trading_data = None
+        try:
+            self.news_data = get_finviz_news(ticker)
+        except:
+            self.news_data = None
+            
+            
     def get_all_financial_data (self, fundamental_frequency='q'):
         df = self.yquery.all_financial_data( frequency = fundamental_frequency)
         df['Quarter'] = df['asOfDate'].apply(lambda x: as_of_date_to_quarter(x))
