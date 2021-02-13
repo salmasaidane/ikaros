@@ -13,7 +13,7 @@ def Price_to_Sales_Signal (stock_object, raw = True, window = 21):
     if raw:
         return stock_object['PriceClose'] / stock_object['TotalRevenue']
     else:
-        return (stock_object['PriceClose'] / stock_object['TotalRevenue']).rolling(window = window).apply(lambda x: (x[-1] - x.mean())/(x.std()))
+        return (stock_object['PriceClose'] / stock_object['TotalRevenue']).rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
       
         
       
