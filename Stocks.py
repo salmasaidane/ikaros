@@ -8,6 +8,7 @@ Created on Sat Jan  2 14:45:14 2021
 import os
 from bs4 import BeautifulSoup
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options 
@@ -129,9 +130,12 @@ def get_finviz_fundamentals_ratings(ticker):
         else:
             Old_PT = cols[4].text
             New_PT = cols[4].text
-            
-        Old_PT = float(Old_PT.strip().replace('$',''))
-        New_PT = float(New_PT.strip().replace('$',''))
+        try:    
+            Old_PT = float(Old_PT.strip().replace('$',''))
+            New_PT = float(New_PT.strip().replace('$',''))
+        except ValueError:
+            Old_PT = np.NaN
+            New_PT = np.NaN
         data.append(
         {
             'RatingDate': Rating_Date,
