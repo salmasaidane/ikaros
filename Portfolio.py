@@ -6,7 +6,7 @@ Created on Sat Feb 13 13:59:04 2021
 """
 
 import pandas as pd
-from Stocks import Stock
+from Stock import Stock
 from scipy.stats import norm
 
 def normalize (x):
@@ -74,10 +74,11 @@ class BlackLitterman(object):
 
 class PairTradingPortfolio(object):
     
-    def __init__(self, stock_obj1 , stock_obj2, signal_func):
+    def __init__(self, stock_obj1 , stock_obj2, signal_func, flip_signal=False):
         self.stock_obj1 = stock_obj1
         self.stock_obj2 = stock_obj2
         self.signal_func = signal_func
+        self.flip_signal = flip_signal
         self.stock_obj1_signal_ts = signal_func(stock_obj1)
         self.stock_obj2_signal_ts = signal_func(stock_obj2)
         self.relative_signal_ts = None
@@ -89,11 +90,25 @@ class PairTradingPortfolio(object):
         
     def relative_scaling(self, window = 90):
         self.relative_signal_ts = (self.stock_obj1_signal_ts / self.stock_obj2_signal_ts).rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+        if self.flip_signal:
+            self.relative_signal_ts = -1 * self.relative_signal_ts
         self.stock_obj1_wght_ts = self.relative_signal_ts.apply(lambda x: (norm.cdf(x) * 2) - 1)
         self.stock_obj2_wght_ts = -1 * self.stock_obj1_wght_ts
+
         self.portfolio_return_ts = self.stock_obj1_wght_ts.shift(1) * self.stock_obj1_return + \
         self.stock_obj2_wght_ts.shift(1) * self.stock_obj2_return
-        
+    
+    def relative_differencing(self, window = 90):
+        self.relative_signal_ts = (self.stock_obj1_signal_ts - self.stock_obj2_signal_ts).rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+        if self.flip_signal:
+            self.relative_signal_ts = -1 * self.relative_signal_ts
+        self.stock_obj1_wght_ts = self.relative_signal_ts.apply(lambda x: (norm.cdf(x) * 2) - 1)
+        self.stock_obj2_wght_ts = -1 * self.stock_obj1_wght_ts
+
+        self.portfolio_return_ts = self.stock_obj1_wght_ts.shift(1) * self.stock_obj1_return + \
+        self.stock_obj2_wght_ts.shift(1) * self.stock_obj2_return
+
+    
     def get_returns(self):
         self.portfolio_return_ts = self.stock_obj1_wght_ts.shift(1) * self.stock_obj1_return + \
         self.stock_obj2_wght_ts.shift(1) * self.stock_obj2_return

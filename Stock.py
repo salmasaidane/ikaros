@@ -13,11 +13,14 @@ from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options 
 from webdriver_manager.chrome import ChromeDriverManager 
+from selenium.webdriver.support.ui import Select
 import time
 from yahooquery import Ticker    
 import functools
 from textblob import TextBlob
 
+
+library_folder = r'D:\Data'
 
 def as_of_date_to_quarter (dt):
     month, year = dt.month, dt.year
@@ -43,7 +46,7 @@ def pandas_csv_cache(folder, file_template, expiration_in_sec,
     return decorator_pandas_csv_cache
 
 
-@pandas_csv_cache(folder=r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library\ZacksEarningsCalendar',
+@pandas_csv_cache(folder=os.path.join(library_folder, 'ZacksEarningsCalendar'),
                   file_template='{ticker}.csv',
                   expiration_in_sec=24*60*60*15,
                   read_csv_kwargs={'sep': '|',
@@ -53,13 +56,15 @@ def pandas_csv_cache(folder, file_template, expiration_in_sec,
 def get_zacks_earnings_calendar(ticker):
     
     url = 'https://www.zacks.com/stock/research/{ticker}/earnings-announcements'.format(ticker=ticker)
-    
-    opts = Options()     
+
+    opts = Options()
     opts.headless = True
     
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=opts)
     driver.get(url)
     time.sleep(1)
+    select = Select(driver.find_element_by_name('earnings_announcements_earnings_table_length'))
+    select.select_by_visible_text('100')
     soup = BeautifulSoup(driver.page_source, 'html.parser') 
     driver.close()
     
@@ -83,7 +88,7 @@ def get_zacks_earnings_calendar(ticker):
     return df
 
 
-@pandas_csv_cache(folder=r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library\FinvizFundamentalRatings',
+@pandas_csv_cache(folder=os.path.join(library_folder, 'FinvizFundamentalRatings'),
                   file_template='{ticker}.csv',
                   expiration_in_sec=24*60*60*15,
                   read_csv_kwargs={'sep': '|',
@@ -152,7 +157,7 @@ def get_finviz_fundamentals_ratings(ticker):
 
 
 
-@pandas_csv_cache(folder=r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library\FinvizInsiderTrading',
+@pandas_csv_cache(folder=os.path.join(library_folder, 'FinvizInsiderTrading'),
                   file_template='{ticker}.csv',
                   expiration_in_sec=24*60*60*15,
                   read_csv_kwargs={'sep': '|',
@@ -212,7 +217,7 @@ def get_finviz_inside_trading(ticker):
     df = pd.DataFrame(data)
     return df
 
-@pandas_csv_cache(folder=r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library\FinvizNews',
+@pandas_csv_cache(folder=os.path.join(library_folder, 'FinvizNews'),
                   file_template='{ticker}.csv',
                   expiration_in_sec=24*60*60*1,
                   read_csv_kwargs={'sep': '|',
@@ -274,7 +279,7 @@ def get_finviz_news(ticker):
 
 class Stock(object):
     
-    def __init__(self, ticker):
+    def __init__(self, ticker, fundamental_frequency='q'):
         self.ticker= ticker
         self.zacks_earnings_cal = get_zacks_earnings_calendar(ticker)
         self.yquery = Ticker(ticker)
@@ -289,13 +294,13 @@ class Stock(object):
                                                                 'low': 'PriceLow',
                                                                 'close': 'PriceClose' 
                                                                 })
-        self.financial_data = self.get_all_financial_data()
+        self.financial_data = self.get_all_financial_data(fundamental_frequency=fundamental_frequency)
         self.ratings_data = get_finviz_fundamentals_ratings(ticker)
         self.insider_trading_data = get_finviz_inside_trading(ticker)
         self.news_data = get_finviz_news(ticker)
         
-    def get_all_financial_data (self):
-        df = self.yquery.all_financial_data( frequency = 'q')
+    def get_all_financial_data (self, fundamental_frequency='q'):
+        df = self.yquery.all_financial_data( frequency = fundamental_frequency)
         df['Quarter'] = df['asOfDate'].apply(lambda x: as_of_date_to_quarter(x))
         df = pd.merge(df, self.zacks_earnings_cal, how = 'left', on = 'Quarter')\
             .set_index('ReleaseDate').drop(['asOfDate', 'periodType', 'Quarter'], axis = 1)
