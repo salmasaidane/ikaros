@@ -107,7 +107,7 @@ Length: 754, dtype: float64
 
 Finally, use the signals and stock objects to construct Portfolios yourself. Currently we have 
 1. Pair Trading Portfolio for 2 Stocks and a Signal
-2. Singal Signal Portfolio for multiple Sotcks given a Signal
+2. Single Signal Portfolio for multiple Sotcks given a Signal
 3. A basic implementation of the Black Litterman Model
 
 For a **PairTradingPortfolio**, lets look at *GM* and *Ford* and compare the two based on the *Quick Ratio*
@@ -148,5 +148,49 @@ date
 2021-02-10    0.823901
 2021-02-11    0.909396
 2021-02-12    0.910393
+Length: 754, dtype: float64
+```
+
+
+For a **SingleSignalPortfolio**, lets look at *FaceBook*, *Microsfot* and *Apple* and compare them based on the *Price to Sales Ratio*.
+
+```python
+>>>> from Stock import Stock
+>>>> from Signals import Quick_Ratio_Signal
+>>>> from Portfolio import SingleSignalPortfolio
+>>>> fb = Stock('FB')
+>>>> msft = Stock('MSFT')
+>>>> aapl = Stock('AAPL')
+>>>> signal_func = lambda stock_obj : Price_to_Sales_Signal(stock_obj, raw=False, window=42) # Use a rolling Z score over 42 days rather than the raw ratio
+>>>> ssp.relative_ranking() # Rank the stock from -1 to +1, in this case we have 3 stocks it will be {-1, 0, 1}, if we have 4 sotck it would be {-1, -0.33, 0.33, 1}
+>>>> ssp.weight_df
+             FB  MSFT  AAPL
+date                       
+2018-02-15  0.0   0.0   0.0
+2018-02-16  0.0   0.0   0.0
+2018-02-20  0.0   0.0   0.0
+2018-02-21  0.0   0.0   0.0
+2018-02-22  0.0   0.0   0.0
+        ...   ...   ...
+2021-02-08  0.0   1.0  -1.0
+2021-02-09  0.0   1.0  -1.0
+2021-02-10  0.0   1.0  -1.0
+2021-02-11  0.0   1.0  -1.0
+2021-02-12  0.0   1.0  -1.0
+
+[754 rows x 3 columns]
+>>>> ssp.get_returns() # Initial values are 0 since signal is not available at the start for any of the stocks
+date
+2018-02-15    0.000000
+2018-02-16    0.000000
+2018-02-20    0.000000
+2018-02-21    0.000000
+2018-02-22    0.000000
+  
+2021-02-08    0.000018
+2021-02-09    0.011935
+2021-02-10    0.000661
+2021-02-11    0.008798
+2021-02-12    0.000269
 Length: 754, dtype: float64
 ```
