@@ -4,9 +4,10 @@ Created on Sat Feb 13 13:59:04 2021
 
 @author: youss
 """
-
+from copy import deepcopy
 import pandas as pd
 import numpy as np
+from numpy.linalg import inv
 from Stock import Stock
 from scipy.stats import norm
 
@@ -16,59 +17,151 @@ def normalize (x):
     return x
 
 
+class SimpleBlackLitterman(object):
 
-class BlackLitterman(object):
+    def __init__(self, stock_arr, signal_func_arr, signal_view_ret_arr,
+                 A=1.0, tau=1.0, shrinkage_factor=0.80):
+        
+        
+        self.stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
+        
+        self.signal_func_arr = signal_func_arr
+        self.signal_view_ret_arr = signal_view_ret_arr
+        self.A = A
+        self.tau = tau
+        self.shrinkage_factor = shrinkage_factor
+        
+        self.returns_df = self.build_returns()
+        self.returns_shifted_df = self.returns_df.shift(1)
+        
+        self.weights_df = self.build_weights()
+        self.weights_shifted_df = self.weights_df.shift(1)
+        
+        self.var_covar_ts = self.generate_varcovar_mats()
+        self.inv_var_covar_ts = self.generate_inv_varcovar_mats()
+        
+        self.implied_returns_df = self.generate_implied_returns()
+        self.signal_df_dict = {'signal_'+str(i):self.build_signal_df(sf).dropna() \
+                               for i, sf in enumerate(self.signal_func_arr)}
+        
+        self.signal_ts_dict = self.generate_signal_ts_dict()
+        self.link_mat_ts = self.generate_link_mats()
+        
+        self.view_var_covar_ts = self.generate_view_var_covar_mats()
+        self.view_inv_var_covar_ts = self.generate_view_inv_var_covar_mats()
 
-    def build_view(signal_func, stock_arr, n_buckets = None):
-        stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
+        self.black_litterman_weights_df = self.generate_black_litterman_weights()
+        
+    def build_returns(self):        
         output_dict = {}
-        for s in stock_arr:
-            output_dict[s.ticker] = signal_func(s)
-        signal_df = pd.DataFrame(output_dict).dropna()
-        if n_buckets is None:
-            view_df = signal_df.rank(pct = True, axis = 1).apply(lambda x: x - x.mean(), axis = 1).apply(lambda x: normalize(x), axis = 1)
-        else:
-            view_df = signal_df.apply(lambda x: pd.qcut(x, n_buckets, labels = False), axis = 1)
-            big_bucket_idx = view_df == (n_buckets - 1)
-            small_bucket_idx = view_df == 0
-            view_df.loc[:,:] = 0
-            view_df[big_bucket_idx] = 1
-            view_df[small_bucket_idx] = -1
-            view_df = view_df.apply(lambda x: normalize(x), axis = 1)
-    
-        return view_df
-      
-    '''      
-    signal_func = lambda s: (s['PriceClose'] / s['TotalRevenue']).rolling(window=21).apply(lambda x: (x[-1] - x.mean())/(x.std()))
-      
-    df = build_view(signal_func, stock_arr = ['FB', 'AAPL', 'MSFT', 'NFLX', 'GOOGL'], n_buckets = 3)
-    '''      
-            
-    def build_returns (stock_arr):
-        stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
-        output_dict = {}
-        for s in stock_arr:
+        for s in self.stock_arr:
             output_dict[s.ticker] = s['PriceClose']
-        price_df = pd.DataFrame(output_dict).dropna()
+        price_df = pd.DataFrame(output_dict)
         returns_df = price_df.pct_change(1)
-        return returns_df
-    
-    def build_weights (stock_arr):
-        stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
+        return returns_df.dropna()
+
+    def build_weights(self):
         output_dict = {}
-        for s in stock_arr:
+        for s in self.stock_arr:
             output_dict[s.ticker] = s['PriceClose'] * s['ShareIssued']
         marketcap_df = pd.DataFrame(output_dict).dropna()   
         weights_df = marketcap_df.apply(lambda x: normalize(x), axis = 1)
         return weights_df
-    
-    def black_litterman_weights(stock_universe, view_arr, tau=1.0, lam=0.5 ):
-        stock_universe = [Stock(s) if isinstance(s, str) else s for s in stock_universe]   
-        weights_df = build_weights(stock_universe).iloc[-1,:]
-        returns_df = build_returns(stock_universe)
-        Sigma = returns_df.cov() * 252  
-        Pi = 2 * lam * Sigma.dot(weights_df)
+
+
+    def generate_varcovar_mats(self, window=126):
+        var_covar_ts = {}
+        for i in range(len(self.returns_df)-window):
+            dt = self.returns_df.index[i+window]
+            ret_mat = self.returns_df.iloc[i:i+window, :]
+            var_cov = ret_mat.cov() * 252
+            # Apply shrinkage factor
+            var_cov = var_cov * self.shrinkage_factor + \
+                      (1.0-self.shrinkage_factor)*np.diag(np.diag(var_cov))
+            var_covar_ts[dt] = var_cov
+        return var_covar_ts
+
+    def generate_inv_varcovar_mats(self):
+        inv_var_covar_ts = deepcopy(self.var_covar_ts)
+        for dt, var_cov_mat in self.var_covar_ts.items():
+            inv_var_covar_ts[dt].loc[:, :] = inv(var_cov_mat)
+        return inv_var_covar_ts
         
+
+    def generate_implied_returns(self):
+        implied_returns_dict = {}
+        for dt, var_cov_mat in self.var_covar_ts.items():
+            if dt in self.weights_shifted_df.index:
+                
+                weigts_arr = self.weights_shifted_df.loc[dt, :]            
+                implied_returns_arr = self.A*var_cov_mat.dot(weigts_arr)            
+                implied_returns_dict[dt] = implied_returns_arr
+        implied_returns_df = pd.DataFrame(implied_returns_dict).T.dropna()
+        return implied_returns_df
+        
+
+    def build_signal_df(self, signal_func):
+        signal_dict = {}
+        for stock_obj in self.stock_arr:
+            stock_signal_ts = signal_func(stock_obj)
+            stock_ticker = stock_obj.ticker
+            signal_dict[stock_ticker] = stock_signal_ts
+        signal_df = pd.DataFrame(signal_dict)
+        return signal_df
+
+    def generate_signal_ts_dict(self):
+        dts = None
+        for signal_label, signal_df in self.signal_df_dict.items():
+            if dts is None:
+                dts = signal_df.index
+            else:
+                dts = dts.intersection(signal_df.index)
+
+        output_dict = {}
+        for dt in dts:
+            date_dict = {}
+            for signal_label, signal_df in self.signal_df_dict.items():
+                date_dict[signal_label] = signal_df.loc[dt, :]
+
+            date_df = pd.DataFrame(date_dict).T
+            output_dict[dt] = date_df
+        return output_dict
+        
+
+    def generate_link_mats(self):
+        link_mat_ts = {}
+        for dt, signal_raw in self.signal_ts_dict.items():
+            link_mat_ts[dt] = signal_raw.apply( lambda x: 2*((x.rank() - 1) / ( np.sum(~np.isnan(x)) - 1)) - 1, axis=1).fillna(0)
+        return link_mat_ts
+
+    def generate_view_var_covar_mats(self):
+        view_var_covar_ts = {}
+        for dt, var_cov_mat in self.var_covar_ts.items():
+            if dt in self.link_mat_ts:
+                P = self.link_mat_ts[dt]
+                Sigma = self.var_covar_ts[dt]
+                Omega = self.tau*P.dot(Sigma).dot(P.T)
+                # Apply shrinkage factor
+                Omega = Omega * self.shrinkage_factor + \
+                          (1.0-self.shrinkage_factor)*np.diag(np.diag(Omega))               
+                view_var_covar_ts[dt] = Omega
+        return view_var_covar_ts
+
+
+    def generate_view_inv_var_covar_mats(self):
+        view_inv_var_covar_ts = deepcopy(self.view_var_covar_ts)
+        for dt, view_var_cov_mat in self.view_var_covar_ts.items():
+            view_inv_var_covar_ts[dt].loc[:, :] = inv(view_var_cov_mat)
+        return view_inv_var_covar_ts        
+
+    def generate_black_litterman_weights(self):
+        black_litterman_weights_dict = {}
+        for dt, view_inv_var_cov_mat in self.view_inv_var_covar_ts.items():
+            if dt in self.implied_returns_df.index:
+                black_litterman_weights_dict[dt] = self.tau*(self.inv_var_covar_ts[dt].dot(self.implied_returns_df.loc[dt])) \
+                        + self.link_mat_ts[dt].T.dot(view_inv_var_cov_mat).dot(self.signal_view_ret_arr)
+        black_litterman_weights_df = pd.DataFrame(black_litterman_weights_dict).T
+        return black_litterman_weights_df
 
 
 class PairTradingPortfolio(object):
