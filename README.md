@@ -41,11 +41,11 @@ date
 2021-02-11    135.130005
 2021-02-12    135.369995
 Name: PriceClose, Length: 754, dtype: float6
-```python
+```
 
 Mix and match market data with fundamental data directly. Ikaros uses the earnings calendar from Zacks to get an accurate Point in time, timeseries from fundamental data.
 
-```
+```python
 >>>> aapl['PriceClose'] / aapl['TotalRevenue']
 date
 2018-02-15             NaN
