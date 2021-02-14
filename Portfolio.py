@@ -71,7 +71,6 @@ class BlackLitterman(object):
         
 
 
-
 class PairTradingPortfolio(object):
     
     def __init__(self, stock_obj1 , stock_obj2, signal_func, flip_signal=False):
