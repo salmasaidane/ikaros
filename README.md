@@ -107,5 +107,5 @@ Length: 754, dtype: float64
 
 Finally, use the signals and stock objects to construct Portfolios yourself. Currently we have 
 1. Pair Trading Portfolio for 2 Stocks and a Signal
-2. Singal Signal Portlfio for multiple Sotck given a Signal
+2. Singal Signal Portfolio for multiple Sotcks given a Signal
 3. A basic implementation of the Black Litterman Model
