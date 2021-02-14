@@ -156,7 +156,7 @@ For a **SingleSignalPortfolio**, lets look at *FaceBook*, *Microsfot* and *Apple
 
 ```python
 >>>> from Stock import Stock
->>>> from Signals import Quick_Ratio_Signal
+>>>> from Signals import Price_to_Sales_Signal
 >>>> from Portfolio import SingleSignalPortfolio
 >>>> fb = Stock('FB')
 >>>> msft = Stock('MSFT')
@@ -193,4 +193,78 @@ date
 2021-02-11    0.008798
 2021-02-12    0.000269
 Length: 754, dtype: float64
+```
+
+For a **SimpleBlackLitterman**, we can provide multiple stocks and multiple signals. Let us try to look at *Ford*, *GM* and *Toyota* based on the *Price to Sales* and *Quick Ratio*
+
+```python
+>>>> from datetime import datetime
+>>>> from Stock import Stock
+>>>> from Signals import Quick_Ratio_Signal, Price_to_Sales_Signal
+>>>> from Portfolio import SimpleBlackLitterman
+>>>> ford = Stock('F')
+>>>> gm = Stock('GM')
+>>>> toyota = Stock('TM')
+>>>> signal_func1 = lambda stock_obj: Quick_Ratio_Signal(stock_obj, raw=True) # Use the Raw quick Ratio
+>>>> signal_func2 = lambda stock_obj: -1*Price_to_Sales_Signal(stock_obj, raw=False, window=63) # Use the moving 63 Z score for Price to Sales. -1 to Flip the signal
+>>>> signal_view_ret_arr = [0.02, 0.01] # Expected returns from each signal. Typically denoted as Q
+>>>> sbl = SimpleBlackLitterman(stock_arr=[ford, gm, toyota], signal_func_arr=[signal_func1, signal_func2], signal_view_ret_arr=signal_view_ret_arr)
+>>>> dt = datetime(2021, 2, 12).date()
+>>>> sbl.weights_df # Weights based on MarketCap
+                   F        GM        TM
+date                                    
+2020-02-07  0.059205  0.085642  0.855153
+2020-02-10  0.059145  0.087673  0.853182
+2020-02-11  0.059010  0.088974  0.852016
+2020-02-12  0.059782  0.089820  0.850399
+2020-02-13  0.060360  0.090068  0.849572
+             ...       ...       ...
+2021-02-08  0.075640  0.127209  0.797151
+2021-02-09  0.077582  0.124607  0.797810
+2021-02-10  0.073859  0.117810  0.808331
+2021-02-11  0.073232  0.116954  0.809814
+2021-02-12  0.072642  0.116230  0.811128
+
+[257 rows x 3 columns]
+>>>> sbl.var_covar_ts[dt] # Variance Covariance Martix computed based on rolling 126 days of returns, var_covar_ts is a dict of dataframes. Typically denoted as Sigma
+           F        GM        TM
+F   0.140825  0.085604  0.021408
+GM  0.085604  0.197158  0.020909
+TM  0.021408  0.020909  0.044832
+>>>> sbl.implied_returns_df # Implied Returns for each day. This is often denoted as Pi
+                   F        GM        TM
+2020-02-10  0.012125  0.016345  0.014762
+2020-02-11  0.012131  0.016199  0.014818
+2020-02-12  0.011994  0.016279  0.014773
+2020-02-13  0.012199  0.016374  0.014645
+2020-02-14  0.011042  0.014466  0.013649
+             ...       ...       ...
+2021-02-08  0.038776  0.047958  0.037335
+2021-02-09  0.039060  0.049541  0.037451
+2021-02-10  0.038827  0.048351  0.037453
+2021-02-11  0.036424  0.045034  0.040050
+2021-02-12  0.037661  0.046260  0.040319
+
+[256 rows x 3 columns]
+>>>> sbl.link_mat_ts[dt] # The link matrix on a given day. link_mat_ts is a dict of dataframes. Typically denoted as Sigma
+            F   GM   TM
+signal_0  1.0 -1.0  0.0
+signal_1 -1.0  0.0  1.0
+>>>> sbl.view_var_covar_ts[dt] # The View variance covariance matrix on a given day. view_var_covar_ts is a dict of dataframes. Typically denoted as Omega
+          signal_0  signal_1
+signal_0  0.166775 -0.043777
+signal_1 -0.043777  0.142840
+>>>> sbl.black_litterman_weights_df # The Black litterman weights over time, based on the changing views
+                   F        GM        TM
+2020-05-07  0.077305  0.127350  0.795345
+2020-05-08  0.077354  0.130177  0.792469
+2020-05-11  0.077862  0.132684  0.789454
+2020-05-12  0.065264  0.071459  0.863277
+2020-05-13  0.114959  0.074012  0.811028
+             ...       ...       ...
+2021-02-08  0.116730  0.123745  0.759526
+2021-02-09  0.116043  0.127209  0.756747
+2021-02-10  0.149960  0.232889  0.617152
+2021-02-11  0.109802 -0.032208  0.922406
+2021-02-12  0.107529 -0.033443  0.925915
 ```
