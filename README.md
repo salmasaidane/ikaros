@@ -8,8 +8,8 @@ Ikaros is a free financial library built in pure python that can be used to get 
 
 The Stock object is a representation of all information what is available for a given security. For example for *AAPL* we scrape information from -
 
-https://finviz.com/quote.ashx?t=AAPL
-https://www.zacks.com/stock/research/AAPL/earnings-announcements
+1. https://finviz.com/quote.ashx?t=AAPL
+2. https://www.zacks.com/stock/research/AAPL/earnings-announcements
 
 We also use the Yahoo Finance Library: yahooquery (GitHub link - https://github.com/dpguthrie/yahooquery ) to  get fundamental data and price data.
 
@@ -109,3 +109,44 @@ Finally, use the signals and stock objects to construct Portfolios yourself. Cur
 1. Pair Trading Portfolio for 2 Stocks and a Signal
 2. Singal Signal Portfolio for multiple Sotcks given a Signal
 3. A basic implementation of the Black Litterman Model
+
+For a **PairTradingPortfolio**, lets look at *GM* and *Ford* and compare the two based on the *Quick Ratio*
+
+```python
+>>>> from Stock import Stock
+>>>> from Signals import Quick_Ratio_Signal
+>>>> from Portfolio import PairTradingPortfolio
+>>>> ford = Stock('F')
+>>>> gm = Stock('GM')
+>>>> ptp = PairTradingPortfolio(stock_obj1=ford, stock_obj2=gm, signal_func=Quick_Ratio_Signal)
+>>>> ptp.relative_differencing() # The weights are set based on the rolling z-score of the difference of the signals for the 2 stocks
+>>>> ptp.get_returns()
+date
+2018-02-15         NaN
+2018-02-16         NaN
+2018-02-20         NaN
+2018-02-21         NaN
+2018-02-22         NaN
+  
+2021-02-08   -0.033217
+2021-02-09    0.037791
+2021-02-10    0.005568
+2021-02-11   -0.001001
+2021-02-12   -0.001700
+Length: 754, dtype: float64
+>>>> ptp.stock_obj1_wght_ts # Get the weight of Stock 1 ( Weight of stock 2 is just -1 times weight of stock 1)
+Out[9]: 
+date
+2018-02-15         NaN
+2018-02-16         NaN
+2018-02-20         NaN
+2018-02-21         NaN
+2018-02-22         NaN
+  
+2021-02-08    0.814045
+2021-02-09    0.818967
+2021-02-10    0.823901
+2021-02-11    0.909396
+2021-02-12    0.910393
+Length: 754, dtype: float64
+```
