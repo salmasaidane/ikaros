@@ -61,4 +61,51 @@ date
 2021-02-12    1.214745e-09
 Length: 754, dtype: float64
 ```
+Ikaros also caches the data webscraped into readable csv files. If you want to save the data in a custom location, ensure that the enviornment variable *IKAROSDATA* is set on your operating system.
 
+## Signal
+
+The Signal Library is repository of functions that provide useful insights into stocks. We have a limited number of signals so far but stay tuned! for more
+
+```python
+
+>>>> from Signals import Quick_Ratio_Signal
+>>>> ford = Stock('F')
+>>>> Quick_Ratio_Signal(ford)
+date
+2018-02-15         NaN
+2018-02-16         NaN
+2018-02-20         NaN
+2018-02-21         NaN
+2018-02-22         NaN
+  
+2021-02-08    1.089966
+2021-02-09    1.089966
+2021-02-10    1.089966
+2021-02-11    1.089966
+2021-02-12    1.089966
+Length: 754, dtype: float64
+
+>>>> Quick_Ratio_Signal(ford, raw=False, window=21) # Computes the rolling 21 day Z-score
+date
+2018-02-15         NaN
+2018-02-16         NaN
+2018-02-20         NaN
+2018-02-21         NaN
+2018-02-22         NaN
+  
+2021-02-08    4.248529
+2021-02-09    2.924038
+2021-02-10    2.320201
+2021-02-11    1.949359
+2021-02-12    1.688194
+Length: 754, dtype: float64
+
+```
+
+## Portfolio
+
+Finally, use the signals and stock objects to construct Portfolios yourself. Currently we have 
+1. Pair Trading Portfolio for 2 Stocks and a Signal
+2. Singal Signal Portlfio for multiple Sotck given a Signal
+3. A basic implementation of the Black Litterman Model
