@@ -19,8 +19,13 @@ from yahooquery import Ticker
 import functools
 from textblob import TextBlob
 
+if os.getenv("IKAROSDATA") is not None:
+    library_folder = os.getenv("IKAROSDATA")
+else:
+    library_folder = os.path.join(os.getenv("APPDATA"), "IKAROSDATA")
+    if not os.path.isdir(library_folder):
+        os.mkdir(library_folder)
 
-library_folder = r'C:\Users\youss\Desktop\Python study Trello Board\Session 8 - Quant Library'
 
 def as_of_date_to_quarter (dt):
     month, year = dt.month, dt.year
@@ -32,6 +37,8 @@ def pandas_csv_cache(folder, file_template, expiration_in_sec,
     def decorator_pandas_csv_cache(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            if not os.path.isdir(folder):
+                os.mkdir(folder)
             ticker = kwargs['ticker'] if 'ticker' in kwargs else args[0]
             file_path = os.path.join(folder, file_template.format(ticker=ticker))
             if os.path.isfile(file_path):

@@ -17,7 +17,6 @@ def normalize (x):
 
 
 
-
 class BlackLitterman(object):
 
     def build_view(signal_func, stock_arr, n_buckets = None):
