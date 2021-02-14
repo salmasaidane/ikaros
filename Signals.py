@@ -54,21 +54,4 @@ def Price_target_to_Price_Signal(stock_obj):
     signal_ts = (PT_ts - stock_obj['PriceClose']) / stock_obj['PriceClose']
     return signal_ts
     
-'''   
-def Price_to_Earnings (stock_object, raw = True, window = 21):
-    if raw:
-        return stock_object['PriceClose'] / stock_object['RetainedEarnings']
-    else:
-        return (stock_object['PriceClose'] / stock_object['RetainedEarnings']).rolling(window = window).apply(lambda x: (x[-1] - x.mean())/(x.std()))
- #Condition on PE within a range, else return 0
- #Column PeRatio in dataset
-    
-def quick_ratio():
-    return 
 
-
-    
-def altman_Z_Score():
-    return -1
-
-'''    
