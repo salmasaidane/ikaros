@@ -9,266 +9,135 @@ import numpy as np
 import pandas as pd
 
 ######################### Valuation Ratios ###################################
-def Price_to_Sales_Signal (stock_object, raw=True, window=21):
-    raw_signal = stock_object['PriceClose'] / (stock_object['TotalRevenue'] /stock_object['ShareIssued'])
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Price_to_Sales_Signal (stock_object):
+    return stock_object['PriceClose'] / (stock_object['TotalRevenue'] /stock_object['ShareIssued'])
+    
 
+def Price_to_Earnings_Signal (stock_object):
+    return stock_object['PriceClose'] / (stock_object['NetIncomeCommonStockholders'] /stock_object['ShareIssued'])
 
-def Price_to_Earnings_Signal (stock_object, raw=True, window=21):
-    raw_signal = stock_object['PriceClose'] / (stock_object['NetIncomeCommonStockholders'] /stock_object['ShareIssued'])
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Price_to_CashFlow_Signal (stock_object):
+    return stock_object['PriceClose'] / (stock_object['FreeCashFlow'] /stock_object['ShareIssued'])
 
-def Price_to_CashFlow_Signal (stock_object, raw=True, window=21):
-    raw_signal = stock_object['PriceClose'] / (stock_object['FreeCashFlow'] /stock_object['ShareIssued'])
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Price_to_Book_Signal (stock_object):
+    return stock_object['PriceClose'] / (stock_object['CommonStockEquity'] /stock_object['ShareIssued'])
 
-def Price_to_Book_Signal (stock_object, raw=True, window=21):
-    raw_signal = stock_object['PriceClose'] / (stock_object['CommonStockEquity'] /stock_object['ShareIssued'])
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def DividendPayout_Ratio_Signal (stock_object):
+    return stock_object['CashDividendsPaid'] / stock_object['NetIncomeCommonStockholders']
 
-def DividendPayout_Ratio_Signal (stock_object, raw=True, window=21):
-    raw_signal = stock_object['CashDividendsPaid'] / stock_object['NetIncomeCommonStockholders']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def RetentionRate_Signal (stock_object):
+    DP = DividendPayout_Ratio_Signal (stock_object)
+    return 1 - DP
 
-def RetentionRate_Signal (stock_object, raw=True, window=21):
-    DP = DividendPayout_Ratio_Signal (stock_object, raw=True)
-    raw_signal = 1 - DP
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
-
-def SustainableGrowth_Signal (stock_object, raw=True, window=21):
-    DP = DividendPayout_Ratio_Signal (stock_object, raw=True)
-    raw_signal = 1 - DP
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def SustainableGrowth_Signal (stock_object):
+    RR= RetentionRate_Signal(stock_object)
+    ROE = ReturnOnEquity_Signal(stock_object)
+    return RR * ROE
 
 
 
 ########################## Activity Ratios ####################################
 
 
-def DaysInventoryOutstanding_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['Inventory'] + 0.5*stock_object['ChangeInInventory']) \
+def DaysInventoryOutstanding_Signal(stock_object):
+    return (stock_object['Inventory'] + 0.5*stock_object['ChangeInInventory']) \
                     / ( stock_object['CostOfRevenue'] / 365.0)
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
-def DaysSalesOutstanding_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['AccountsReceivable'] + 0.5*stock_object['ChangesInAccountReceivables']) \
+def DaysSalesOutstanding_Signal(stock_object):
+    return (stock_object['AccountsReceivable'] + 0.5*stock_object['ChangesInAccountReceivables']) \
                     / ( stock_object['TotalRevenue'] / 365.0)
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
 
-def DaysPayableOutstanding_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['AccountsPayable'] + 0.5*stock_object['ChangeInAccountPayable']) \
+def DaysPayableOutstanding_Signal(stock_object):
+    return (stock_object['AccountsPayable'] + 0.5*stock_object['ChangeInAccountPayable']) \
                     / ( stock_object['CostOfRevenue'] / 365.0)
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
-def WorkingCapitalTurnover_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['TotalRevenue'] / stock_object['WorkingCapital']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def WorkingCapitalTurnover_Signal(stock_object):
+    return stock_object['TotalRevenue'] / stock_object['WorkingCapital']
 
-def FixedAssetsTurnover_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['TotalRevenue'] / (stock_object['TotalAssets'] - stock_object['GoodwillAndOtherIntangibleAssets'])
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def FixedAssetsTurnover_Signal(stock_object):
+    return stock_object['TotalRevenue'] / (stock_object['TotalAssets'] - stock_object['GoodwillAndOtherIntangibleAssets'])
 
-def TotalAssetsTurnover_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['TotalRevenue'] / stock_object['TotalAssets']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def TotalAssetsTurnover_Signal(stock_object):
+    return stock_object['TotalRevenue'] / stock_object['TotalAssets']
 
 
 ######################### Liquidity Ratios ###################################
-def Current_Ratio_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['CurrentAssets'] / stock_object['CurrentLiabilities']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Current_Ratio_Signal(stock_object):
+    return stock_object['CurrentAssets'] / stock_object['CurrentLiabilities']
 
-def Quick_Ratio_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['CurrentAssets'] - stock_object['Inventory'])\
+def Quick_Ratio_Signal(stock_object):
+    return (stock_object['CurrentAssets'] - stock_object['Inventory'])\
             / stock_object['CurrentLiabilities']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
-def Cash_Ratio_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['CashAndCashEquivalents'] / stock_object['CurrentLiabilities']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Cash_Ratio_Signal(stock_object):
+    return stock_object['CashAndCashEquivalents'] / stock_object['CurrentLiabilities']
 
-def DefensiveInterval_Ratio_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['CashAndCashEquivalents'] + stock_object['Receivables']) \
+def DefensiveInterval_Ratio_Signal(stock_object):
+    return (stock_object['CashAndCashEquivalents'] + stock_object['Receivables']) \
             / stock_object['CurrentLiabilities']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
-def CashConverstionCycle_Signal(stock_object, raw=True, window=21):
-    DIO = DaysInventoryOutstanding_Signal(stock_object,  raw=True)
-    DSO = DaysSalesOutstanding_Signal(stock_object,  raw=True)
-    DPO = DaysPayableOutstanding_Signal(stock_object,  raw=True)
-    raw_signal = DIO + DSO - DPO
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def CashConverstionCycle_Signal(stock_object):
+    DIO = DaysInventoryOutstanding_Signal(stock_object)
+    DSO = DaysSalesOutstanding_Signal(stock_object)
+    DPO = DaysPayableOutstanding_Signal(stock_object)
+    return DIO + DSO - DPO
 
 
 ######################## Profitability Ratios ##################################
 
-def GrossProfitMargin_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['GrossProfit'] / stock_object['TotalRevenue']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def GrossProfitMargin_Signal(stock_object):
+    return stock_object['GrossProfit'] / stock_object['TotalRevenue']
 
-def OperatingProfitMargin_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['OperatingIncome'] / stock_object['TotalRevenue']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def OperatingProfitMargin_Signal(stock_object):
+    return stock_object['OperatingIncome'] / stock_object['TotalRevenue']
 
-def PreTaxMargin_Signal(stock_object, raw=True, window=21):
-    raw_signal = (stock_object['EBIT'] - stock_object['InterestExpense']) / stock_object['TotalRevenue']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def PreTaxMargin_Signal(stock_object):
+    return (stock_object['EBIT'] - stock_object['InterestExpense']) / stock_object['TotalRevenue']
 
-def NetIncomeMargin_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['NetIncome'] / stock_object['TotalRevenue']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def NetIncomeMargin_Signal(stock_object):
+    return stock_object['NetIncome'] / stock_object['TotalRevenue']
 
 
-def ReturnOnAssets_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['NetIncome'] / stock_object['TotalAssets']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def ReturnOnAssets_Signal(stock_object):
+    return stock_object['NetIncome'] / stock_object['TotalAssets']
 
-def OperatingReturnOnAssets_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['OperatingIncome'] / stock_object['TotalAssets']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def OperatingReturnOnAssets_Signal(stock_object):
+    return stock_object['OperatingIncome'] / stock_object['TotalAssets']
 
 
-def ReturnOnEquity_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['NetIncome'] / stock_object['TotalEquityGrossMinorityInterest']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def ReturnOnEquity_Signal(stock_object):
+    return stock_object['NetIncome'] / stock_object['TotalEquityGrossMinorityInterest']
 
-def OperatingReturnOnEquity_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['OperatingIncome'] / stock_object['TotalEquityGrossMinorityInterest']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def OperatingReturnOnEquity_Signal(stock_object):
+    return stock_object['OperatingIncome'] / stock_object['TotalEquityGrossMinorityInterest']
 
-def ReturnOnCommonEquity_Signal(stock_object, raw=True, window=21):
-    raw_signal = stock_object['DilutedNIAvailtoComStockholders'] / stock_object['CommonStockEquity']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))    
+def ReturnOnCommonEquity_Signal(stock_object):
+    return stock_object['DilutedNIAvailtoComStockholders'] / stock_object['CommonStockEquity']
 
 
 
 ######################### Solvency Ratios ###################################
 
-def Debt_to_Assets_Signal(stock_object,  raw=True, window=21):
-    raw_signal = stock_object['TotalDebt'] / stock_object['TotalAssets']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Debt_to_Assets_Signal(stock_object):
+    return stock_object['TotalDebt'] / stock_object['TotalAssets']
 
 
-def Debt_to_Capital_Signal(stock_object,  raw=True, window=21):
-    raw_signal = stock_object['TotalDebt'] / ( stock_object['TotalDebt'] + stock_object['TotalEquityGrossMinorityInterest'] )
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Debt_to_Capital_Signal(stock_object):
+    return stock_object['TotalDebt'] / ( stock_object['TotalDebt'] + stock_object['TotalEquityGrossMinorityInterest'] )
 
-def Debt_to_Equity_Signal(stock_object,  raw=True, window=21):
-    raw_signal = stock_object['TotalDebt'] / stock_object['TotalEquityGrossMinorityInterest']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def Debt_to_Equity_Signal(stock_object):
+    return stock_object['TotalDebt'] / stock_object['TotalEquityGrossMinorityInterest']
 
-def FinancialLeverage_Signal(stock_object,  raw=True, window=21):
-    raw_signal = stock_object['TotalAssets'] / stock_object['TotalEquityGrossMinorityInterest']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def FinancialLeverage_Signal(stock_object):
+    return stock_object['TotalAssets'] / stock_object['TotalEquityGrossMinorityInterest']
 
-def InterestCoverage_Signal(stock_object,  raw=True, window=21):
-    raw_signal = stock_object['EBIT'] / stock_object['InterestExpense']
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
+def InterestCoverage_Signal(stock_object):
+    return stock_object['EBIT'] / stock_object['InterestExpense']
 
-def FixedCharge_Signal(stock_object,  raw=True, window=21):
-    raw_signal = ( stock_object['EBIT'] + stock_object['Leases'] ) / \
+def FixedCharge_Signal(stock_object):
+    return ( stock_object['EBIT'] + stock_object['Leases'] ) / \
                  ( stock_object['InterestExpense'] + stock_object['Leases'] )
-    if raw:
-        return raw_signal
-    else:
-        return raw_signal.rolling(window = window).apply(lambda x: (x[-1] - x[0:-1].mean())/(x[0:-1].std()))
 
 
 ########################### Insider Flow #####################################
