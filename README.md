@@ -86,7 +86,8 @@ date
 2021-02-12    1.089966
 Length: 754, dtype: float64
 
->>>> Quick_Ratio_Signal(ford, raw=False, window=21) # Computes the rolling 21 day Z-score
+>>>> from SignalTransformers import Z_Score
+>>>> Z_Score(Quick_Ratio_Signal(ford), window = 21) # Computes the rolling 21 day Z-score
 date
 2018-02-15         NaN
 2018-02-16         NaN
@@ -158,10 +159,11 @@ For a **SingleSignalPortfolio**, lets look at *FaceBook*, *Microsfot* and *Apple
 >>>> from Stock import Stock
 >>>> from Signals import Price_to_Sales_Signal
 >>>> from Portfolio import SingleSignalPortfolio
+>>>> from SignalTransformers import Z_Score
 >>>> fb = Stock('FB')
 >>>> msft = Stock('MSFT')
 >>>> aapl = Stock('AAPL')
->>>> signal_func = lambda stock_obj : Price_to_Sales_Signal(stock_obj, raw=False, window=42) # Use a rolling Z score over 42 days rather than the raw ratio
+>>>> signal_func = lambda stock_obj : Z_Score(Price_to_Sales_Signal(stock_obj), window=42) # Use a rolling Z score over 42 days rather than the raw ratio
 >>>> ssp.relative_ranking() # Rank the stock from -1 to +1, in this case we have 3 stocks it will be {-1, 0, 1}, if we have 4 sotck it would be {-1, -0.33, 0.33, 1}
 >>>> ssp.weight_df
              FB  MSFT  AAPL
@@ -202,11 +204,12 @@ For a **SimpleBlackLitterman**, we can provide multiple stocks and multiple sign
 >>>> from Stock import Stock
 >>>> from Signals import Quick_Ratio_Signal, Price_to_Sales_Signal
 >>>> from Portfolio import SimpleBlackLitterman
+>>>> from SignalTransformers import Z_Score
 >>>> ford = Stock('F')
 >>>> gm = Stock('GM')
 >>>> toyota = Stock('TM')
->>>> signal_func1 = lambda stock_obj: Quick_Ratio_Signal(stock_obj, raw=True) # Use the Raw quick Ratio
->>>> signal_func2 = lambda stock_obj: -1*Price_to_Sales_Signal(stock_obj, raw=False, window=63) # Use the moving 63 Z score for Price to Sales. -1 to Flip the signal
+>>>> signal_func1 = lambda stock_obj: Quick_Ratio_Signal(stock_obj) # Use the Raw quick Ratio
+>>>> signal_func2 = lambda stock_obj: Z_Score(-1*Price_to_Sales_Signal(stock_obj), window=63) # Use the moving 63 Z score for Price to Sales. -1 to Flip the signal
 >>>> signal_view_ret_arr = [0.02, 0.01] # Expected returns from each signal. Typically denoted as Q
 >>>> sbl = SimpleBlackLitterman(stock_arr=[ford, gm, toyota], signal_func_arr=[signal_func1, signal_func2], signal_view_ret_arr=signal_view_ret_arr)
 >>>> dt = datetime(2021, 2, 12).date()
