@@ -188,11 +188,7 @@ def Fama_French_Rolling_Beta(stock_obj, Fama_French_Series_Name, window = 42):
     signal_ts = pd.Series(signal_dict)
     signal_ts.name = Fama_French_Series_Name + '_Beta'
     return signal_ts
-    
-    
-    
-    
-    
+       
     
     
     
