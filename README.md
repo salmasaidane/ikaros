@@ -164,6 +164,7 @@ For a **SingleSignalPortfolio**, lets look at *FaceBook*, *Microsfot* and *Apple
 >>>> msft = Stock('MSFT')
 >>>> aapl = Stock('AAPL')
 >>>> signal_func = lambda stock_obj : Z_Score(Price_to_Sales_Signal(stock_obj), window=42) # Use a rolling Z score over 42 days rather than the raw ratio
+>>>> ssp = SingleSignalPortfolio([fb, msft, aapl], signal_func)
 >>>> ssp.relative_ranking() # Rank the stock from -1 to +1, in this case we have 3 stocks it will be {-1, 0, 1}, if we have 4 sotck it would be {-1, -0.33, 0.33, 1}
 >>>> ssp.weight_df
              FB  MSFT  AAPL
@@ -270,4 +271,23 @@ signal_1 -0.043777  0.142840
 2021-02-10  0.149960  0.232889  0.617152
 2021-02-11  0.109802 -0.032208  0.922406
 2021-02-12  0.107529 -0.033443  0.925915
+```
+## Update 13/03/2021:
+
+We have added Fama French Factors and some regression utilities for users to be able to look at Fama French factor exposure and incorporate it into their portfolio construction process. Small example below:
+
+```
+>>>> from Stock import Stock
+>>>> from Signals import Fama_French_Rolling_Beta
+>>>> from Portfolio import SingleSignalPortfolio
+>>>> fb = Stock('FB')
+>>>> msft = Stock('MSFT')
+>>>> aapl = Stock('AAPL')
+```
+We start off by creating some stock objects and calling a few imports. Next we need to fix our signal function. To do this we use the *Fama_French_Rolling_Beta* import by fixing the Fama_French series name and the regression window.
+```
+>>>> Fama_French_HML_42d_Rolling_Beta = lambda x: Fama_French_Rolling_Beta(stock_obj = x, Fama_French_Series_Name = 'HML', window = 42)
+>>>> ssp = SingleSignalPortfolio([fb, msft, aapl], Fama_French_HML_42d_Rolling_Beta)
+>>>> ssp.relative_ranking()
+>>>> ssp.get_returns()
 ```
