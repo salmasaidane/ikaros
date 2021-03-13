@@ -272,11 +272,11 @@ signal_1 -0.043777  0.142840
 2021-02-11  0.109802 -0.032208  0.922406
 2021-02-12  0.107529 -0.033443  0.925915
 ```
-## Update 13/03/2021:
+### Update 13/03/2021:
 
 We have added Fama French Factors and some regression utilities for users to be able to look at Fama French factor exposure and incorporate it into their portfolio construction process. Small example below:
 
-```
+```python
 >>>> from Stock import Stock
 >>>> from Signals import Fama_French_Rolling_Beta
 >>>> from Portfolio import SingleSignalPortfolio
@@ -285,7 +285,7 @@ We have added Fama French Factors and some regression utilities for users to be 
 >>>> aapl = Stock('AAPL')
 ```
 We start off by creating some stock objects and calling a few imports. Next we need to fix our signal function. To do this we use the *Fama_French_Rolling_Beta* import by fixing the Fama_French series name and the regression window.
-```
+```python
 >>>> Fama_French_HML_42d_Rolling_Beta = lambda x: Fama_French_Rolling_Beta(stock_obj = x, Fama_French_Series_Name = 'HML', window = 42)
 >>>> ssp = SingleSignalPortfolio([fb, msft, aapl], Fama_French_HML_42d_Rolling_Beta)
 >>>> ssp.relative_ranking()
