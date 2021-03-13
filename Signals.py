@@ -7,6 +7,8 @@ Created on Sat Feb 13 13:55:33 2021
 
 import numpy as np
 import pandas as pd
+from MacroData import get_Fama_French_ts
+from Utils import Rolling_Regression
 
 ######################### Valuation Ratios ###################################
 def Price_to_Sales_Signal (stock_object):
@@ -171,5 +173,42 @@ def Price_target_to_Price_Signal(stock_obj):
     PT_ts = PT_ts.reindex(stock_obj['PriceClose'].index).ffill()
     signal_ts = (PT_ts - stock_obj['PriceClose']) / stock_obj['PriceClose']
     return signal_ts
+    
+########################### Fama French Factors ############################### 
+
+def Fama_French_Rolling_Beta(stock_obj, Fama_French_Series_Name, window = 42):
+    
+    stock_daily_returns = stock_obj['PriceClose'].pct_change(1).dropna()
+    F_F_series = get_Fama_French_ts(Fama_French_Series_Name)
+    output_dict = Rolling_Regression( Y_ts=stock_daily_returns, 
+                                     X_ts_arr=[F_F_series], 
+                                     window=window)
+    signal_dict = {dt: v['Beta_hat'][Fama_French_Series_Name] for dt, v in output_dict.items()}
+    
+    signal_ts = pd.Series(signal_dict)
+    signal_ts.name = Fama_French_Series_Name + '_Beta'
+    return signal_ts
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
 
