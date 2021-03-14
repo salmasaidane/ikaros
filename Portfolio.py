@@ -16,7 +16,82 @@ def normalize (x):
     x[x<0.001] = x[x<0.001] / - x[x<0.001].sum()
     return x
 
+def stock_obj_arr_to_return_mat(stock_obj_arr):
+    output_dict = {}
+    for s in stock_obj_arr:
+        output_dict[s.ticker] = s['PriceClose']
+    price_df = pd.DataFrame(output_dict)
+    returns_df = price_df.pct_change(1)
+    return returns_df.dropna() 
 
+def return_mat_to_rolling_var_covar_dict(returns_mat, window=126, 
+                                         shrinkage_factor=0.8):
+    var_covar_ts = {}
+    for i in range(len(returns_mat)-window):
+        dt = returns_mat.index[i+window]
+        ret_mat = returns_mat.iloc[i:i+window, :]
+        var_cov = ret_mat.cov() * 252
+        # Apply shrinkage factor
+        var_cov = var_cov * shrinkage_factor + \
+                  (1.0-shrinkage_factor)*np.diag(np.diag(var_cov))
+        var_covar_ts[dt] = var_cov
+    return var_covar_ts
+
+def invert_var_covar_dict(var_covar_ts_dict):
+    inv_var_covar_ts = deepcopy(var_covar_ts_dict)
+    for dt, var_cov_mat in var_covar_ts_dict.items():
+        #Updating the values inside inv_var_covar_ts to preserve the structure
+        #when doing inverse
+        inv_var_covar_ts[dt].loc[:, :] = inv(var_cov_mat)
+    return inv_var_covar_ts
+    
+def MVOpt_LS_Fixed_risk(r, Sig, s, Sig_inv = None):
+    # r is the returns vector for a given day
+    # Sig is the var_covar mat for a given day
+    # s is a fixed level of risk for the portfolio
+    # Given a returns vector, a var_covar matrix, and a specified level of rsk,
+    # we want to construct a Long Short Portfolio that maximizes returns with respect 
+    # to weights such that the sum of weights is = 0 (constraint 1)
+    # and the variance if the portfolio is equal to s (constarint 2)
+    
+    if Sig_inv is None:
+        Sig_inv = inv(Sig)   
+    o = np.ones_like(r)
+    lam_2_num = o.T.dot(Sig_inv).dot(r)
+    lam_2_den = o.T.dot(Sig_inv).dot(o)
+    lam_2 = lam_2_num / lam_2_den
+    
+    r_lam2_1 = r - lam_2 * o
+    lam_1_mat_prod = r_lam2_1.T.dot(Sig_inv).dot(r_lam2_1)
+    lam_1 = np.sqrt(lam_1_mat_prod/(4 * s))
+    w = (1/(2*lam_1)) * Sig_inv.dot(r_lam2_1)
+    return w
+         
+class MeanVarianceOptimization(object):
+    def __init__(self, stock_arr, s = 0.35, shrinkage_factor=0.80):
+        self.stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
+        self.s = s
+        self.shrinkage_factor = shrinkage_factor
+        self.returns_df = stock_obj_arr_to_return_mat(self.stock_arr)
+        self.returns_shifted_df = self.returns_df.shift(1)
+        self.var_covar_ts = return_mat_to_rolling_var_covar_dict(self.returns_df, 
+                                    window=126, 
+                                    shrinkage_factor=self.shrinkage_factor)
+        self.inv_var_covar_ts = invert_var_covar_dict(var_covar_ts_dict=self.var_covar_ts)
+        self.expected_returns_df = self.returns_df.rolling(window = 126).mean().shift(1).dropna()*252
+        self.weights_df = self.build_weights()
+        
+    def build_weights(self):
+        weights_dict = {}
+        for dt, Sig_inv in self.inv_var_covar_ts.items():
+            r = self.expected_returns_df.loc[dt,:]
+            Sig = self.var_covar_ts[dt]
+            w = MVOpt_LS_Fixed_risk(r = r, Sig = Sig, s = self.s, Sig_inv = Sig_inv)
+            weights_dict[dt] = w
+        weights_df = pd.DataFrame(weights_dict).T
+        return weights_df
+        
+        
 class SimpleBlackLitterman(object):
 
     def __init__(self, stock_arr, signal_func_arr, signal_view_ret_arr,
@@ -31,14 +106,16 @@ class SimpleBlackLitterman(object):
         self.tau = tau
         self.shrinkage_factor = shrinkage_factor
         
-        self.returns_df = self.build_returns()
+        self.returns_df = stock_obj_arr_to_return_mat(self.stock_arr)
         self.returns_shifted_df = self.returns_df.shift(1)
         
         self.weights_df = self.build_weights()
         self.weights_shifted_df = self.weights_df.shift(1)
         
-        self.var_covar_ts = self.generate_varcovar_mats()
-        self.inv_var_covar_ts = self.generate_inv_varcovar_mats()
+        self.var_covar_ts = return_mat_to_rolling_var_covar_dict(self.returns_df, 
+                                    window=126, 
+                                    shrinkage_factor=self.shrinkage_factor)
+        self.inv_var_covar_ts = invert_var_covar_dict(var_covar_ts_dict=self.var_covar_ts)
         
         self.implied_returns_df = self.generate_implied_returns()
         self.signal_df_dict = {'signal_'+str(i):self.build_signal_df(sf).dropna() \
@@ -52,13 +129,6 @@ class SimpleBlackLitterman(object):
 
         self.black_litterman_weights_df = self.generate_black_litterman_weights()
         
-    def build_returns(self):        
-        output_dict = {}
-        for s in self.stock_arr:
-            output_dict[s.ticker] = s['PriceClose']
-        price_df = pd.DataFrame(output_dict)
-        returns_df = price_df.pct_change(1)
-        return returns_df.dropna()
 
     def build_weights(self):
         output_dict = {}
@@ -67,26 +137,7 @@ class SimpleBlackLitterman(object):
         marketcap_df = pd.DataFrame(output_dict).dropna()   
         weights_df = marketcap_df.apply(lambda x: normalize(x), axis = 1)
         return weights_df
-
-
-    def generate_varcovar_mats(self, window=126):
-        var_covar_ts = {}
-        for i in range(len(self.returns_df)-window):
-            dt = self.returns_df.index[i+window]
-            ret_mat = self.returns_df.iloc[i:i+window, :]
-            var_cov = ret_mat.cov() * 252
-            # Apply shrinkage factor
-            var_cov = var_cov * self.shrinkage_factor + \
-                      (1.0-self.shrinkage_factor)*np.diag(np.diag(var_cov))
-            var_covar_ts[dt] = var_cov
-        return var_covar_ts
-
-    def generate_inv_varcovar_mats(self):
-        inv_var_covar_ts = deepcopy(self.var_covar_ts)
-        for dt, var_cov_mat in self.var_covar_ts.items():
-            inv_var_covar_ts[dt].loc[:, :] = inv(var_cov_mat)
-        return inv_var_covar_ts
-        
+       
 
     def generate_implied_returns(self):
         implied_returns_dict = {}
@@ -236,7 +287,7 @@ class SingleSignalPortfolio(object):
         
         
         
-        
+     
         
         
         
