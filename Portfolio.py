@@ -24,6 +24,13 @@ def stock_obj_arr_to_return_mat(stock_obj_arr):
     returns_df = price_df.pct_change(1)
     return returns_df.dropna() 
 
+def stock_obj_arr_to_signal_mat(stock_obj_arr, signal_func):
+    output_dict = {}
+    for s in stock_obj_arr:
+        output_dict[s.ticker] = signal_func(s)
+    signal_df = pd.DataFrame(output_dict)
+    return signal_df.dropna() 
+
 def return_mat_to_rolling_var_covar_dict(returns_mat, window=126, 
                                          shrinkage_factor=0.8):
     var_covar_ts = {}
@@ -66,7 +73,30 @@ def MVOpt_LS_Fixed_risk(r, Sig, s, Sig_inv = None):
     lam_1 = np.sqrt(lam_1_mat_prod/(4 * s))
     w = (1/(2*lam_1)) * Sig_inv.dot(r_lam2_1)
     return w
-         
+  
+def MVOpt_LS_Fixed_risk_beta(r, Sig, s, beta, Sig_inv = None):
+
+    if Sig_inv is None:
+        Sig_inv = inv(Sig) 
+    o = np.ones_like(r)
+    
+    o_sig_o = o.T.dot(Sig_inv).dot(o)
+    o_sig_b = o.T.dot(Sig_inv).dot(beta)
+    b_sig_o = beta.T.dot(Sig_inv).dot(o)
+    b_sig_b = beta.T.dot(Sig_inv).dot(beta)
+    o_sig_r = o.T.dot(Sig_inv).dot(r)
+    b_sig_r = beta.T.dot(Sig_inv).dot(r)
+    
+    lam_2, lam_3 = inv([[o_sig_o, o_sig_b], [b_sig_o, b_sig_b]]).dot([o_sig_r, b_sig_r]) 
+    r_lam_2_lam_3 = r - (lam_2 * o) - (lam_3 * beta)
+    r_sig_r = r_lam_2_lam_3.T.dot(Sig_inv).dot(r_lam_2_lam_3)
+    lam_1 = np.sqrt(r_sig_r / (4 * s))
+    w = (1/ (2 * lam_1)) * Sig_inv.dot(r_lam_2_lam_3)
+    
+    return w
+    
+    
+       
 class MeanVarianceOptimization(object):
     def __init__(self, stock_arr, s = 0.35, shrinkage_factor=0.80):
         self.stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
@@ -285,14 +315,54 @@ class SingleSignalPortfolio(object):
         self.portfolio_return_ts = (self.weight_df.shift(1) * self.returns_df).sum(axis = 1)
         return self.portfolio_return_ts
         
+    
+class SingleSignalHedgedPortfolio(object):
+    
+    def __init__(self, stock_obj_arr, signal_func, hedge_signal_func, signal_return_view = 0.01, shrinkage_factor=0.85, portfolio_trgt_risk=0.2):
+        self.portfolio_trgt_risk = portfolio_trgt_risk
+        self.shrinkage_factor = shrinkage_factor
+        self.stock_obj_arr = stock_obj_arr
+        self.signal_return_view = signal_return_view
+        self.signal_func = signal_func
+        self.hedge_signal_func = hedge_signal_func
+        self.signal_df = stock_obj_arr_to_signal_mat(stock_obj_arr=self.stock_obj_arr , signal_func=self.signal_func)
+        self.hedge_signal_df = stock_obj_arr_to_signal_mat(stock_obj_arr=self.stock_obj_arr , signal_func=self.hedge_signal_func)
+        self.ranked_signal_df = self.signal_df.apply( lambda x: 2*((x.rank() - 1) / ( np.sum(~np.isnan(x)) - 1)) - 1, axis=1).fillna(0)
+        self.expected_returns_df = self.ranked_signal_df * self.signal_return_view
+        self.returns_df = stock_obj_arr_to_return_mat(self.stock_obj_arr)
+        self.returns_shifted_df = self.returns_df.shift(1)
+        self.var_covar_ts = return_mat_to_rolling_var_covar_dict(self.returns_df, 
+                                    window=126, 
+                                    shrinkage_factor=self.shrinkage_factor)
+        self.inv_var_covar_ts = invert_var_covar_dict(var_covar_ts_dict=self.var_covar_ts)   
+        self.weights = self.build_weights()
+    
+ 
+    def build_weights(self):
+        weights_dict = {}
+        dts = self.hedge_signal_df.index.intersection(self.expected_returns_df.index)
+        for dt in dts:
+            if dt not in self.inv_var_covar_ts:
+                continue
+            
+            r = self.expected_returns_df.loc[dt,:]            
+            beta = self.hedge_signal_df.loc[dt,:] 
+            
+            Sig = self.var_covar_ts[dt]
+            Sig_inv = self.inv_var_covar_ts[dt]
+            
+            w = MVOpt_LS_Fixed_risk_beta(r=r, Sig=Sig, s=self.portfolio_trgt_risk, beta=beta, Sig_inv=Sig_inv)
+            weights_dict[dt] = w
+        weights_df = pd.DataFrame(weights_dict).T
+        return weights_df         
+        
+
+    
         
         
-     
         
         
-        
-        
-        
+    
         
         
 

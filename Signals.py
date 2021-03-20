@@ -190,6 +190,30 @@ def Fama_French_Rolling_Beta(stock_obj, Fama_French_Series_Name, window = 42):
     return signal_ts
        
     
+############################## Momentum Factors ################################## 
+
+def Momentum_dual_window(stock_obj, window_long, window_short):
+    
+    stock_daily_returns = stock_obj['PriceClose'].pct_change(1).dropna()
+    Momentum_window_long_series = stock_daily_returns.rolling(window = window_long).mean().shift(1)
+    Momentum_window_short_series = stock_daily_returns.rolling(window = window_short).mean().shift(1)
+    
+    return Momentum_window_long_series - Momentum_window_short_series
+
+
+def Momentum_12M_1M(stock_obj):
+    return Momentum_dual_window(stock_obj, window_long = 252, window_short = 21)
+
+def Momentum_window(stock_obj, window):
+    
+    stock_daily_returns = stock_obj['PriceClose'].pct_change(1).dropna()
+    Momentum_window_series = stock_daily_returns.rolling(window = window).mean().shift(1)
+    
+    return Momentum_window_series    
+    
+
+   
+    
     
     
     
