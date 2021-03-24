@@ -291,3 +291,38 @@ We start off by creating some stock objects and calling a few imports. Next we n
 >>>> ssp.relative_ranking()
 >>>> ssp.get_returns()
 ```
+### Update 20/03/2021:
+
+We can use the Fama French factors as hedging factors in our portfolios. As an example, we will run a Mean_Variance Optimization problem where we try to maximize expected returns based on momentum and set the portfolio risk level while ensuring that the portfolio long short is $ neutral and hedged against the Fama French market factor.
+
+```python
+>>>> from Stock import Stock
+>>>> from Signals import Fama_French_Rolling_Beta
+>>>> from Signals import Momentum_window
+>>>> from Portfolio import SingleSignalHedgedPortfolio
+>>>> fb = Stock('FB')
+>>>> msft = Stock('MSFT')
+>>>> aapl = Stock('AAPL')
+>>>> gm = Stock('GM')
+>>>> ford = Stock('F')
+>>>> toyota = Stock('TM')
+>>>> momentum_1_month = lambda x: Momentum_window(stock_obj = x, window = 21)
+>>>> ff_mkt_126_day = lambda x: Fama_French_Rolling_Beta(stock_obj = x, Fama_French_Series_Name='Mkt-RF', window = 126)
+>>>> sshp = SingleSignalHedgedPortfolio(stock_obj_arr = [aapl, fb, gm, toyota, msft, ford], signal_func = momentum_1_month, hedge_signal_func = ff_mkt_126_day)
+>>>> sshp.weights
+ 
+                AAPL        FB        GM        TM      MSFT         F
+2018-09-19 -1.015144 -0.800390 -0.864789  1.001281  1.005075  0.673968
+2018-09-20 -0.438238 -0.797528 -0.748085  1.250913  0.895315 -0.162375
+2018-09-21  0.473650 -1.068282 -0.657205  0.325068  0.721083  0.205687
+2018-09-24 -0.126392 -1.042924 -0.691608 -0.769358  0.741956  1.888326
+2018-09-25  0.424757 -1.101550 -0.524593 -0.038464  1.180868  0.058982
+             ...       ...       ...       ...       ...       ...
+2021-02-22 -0.513552 -0.757754 -0.746238 -0.234548  1.547468  0.704624
+2021-02-23 -1.042702 -0.298998 -0.543532 -0.399754  1.676662  0.608324
+2021-02-24 -1.088975 -0.299291 -0.467647 -0.297045  1.829545  0.323412
+2021-02-25 -0.880020 -0.403605 -0.648693 -0.465087  1.367805  1.029600
+2021-02-26 -0.876299 -0.385701 -0.635519 -0.491271  1.340112  1.048678
+
+[614 rows x 6 columns]
+```
