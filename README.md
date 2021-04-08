@@ -6,7 +6,7 @@ Ikaros is a free financial library built in pure python that can be used to get 
 
 ## Stock
 
-The Stock object is a representation of all information what is available for a given security. For example for *AAPL* we scrape information from -
+The Stock object is a representation of all information that is available for a given security. For example for *AAPL* we scrape information from -
 
 1. https://finviz.com/quote.ashx?t=AAPL
 2. https://www.zacks.com/stock/research/AAPL/earnings-announcements
