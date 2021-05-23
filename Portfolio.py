@@ -101,7 +101,16 @@ def MVOpt_LS_Fixed_risk_beta(r, Sig, s, beta, Sig_inv = None):
     
     return w
     
+def MVOpt_L_Min_Var(Sig, Sig_inv = None):
     
+    if Sig_inv is None:
+        Sig_inv = inv(Sig)   
+    o = np.ones(Sig.shape[0])
+    lam_1 = 1/ (o.T.dot(Sig_inv).dot(o))
+    
+    w = lam_1 * Sig_inv.dot(o)
+    return w
+  
        
 class MeanVarianceOptimization(object):
     def __init__(self, stock_arr, s = 0.35, shrinkage_factor=0.80):
@@ -128,7 +137,31 @@ class MeanVarianceOptimization(object):
         weights_df = pd.DataFrame(weights_dict).T
         return weights_df
         
+    
+class MinVarianceOptimization(object):
+    def __init__(self, stock_arr, shrinkage_factor=0.80, window=126):
+        self.stock_arr = [Stock(s) if isinstance(s, str) else s for s in stock_arr]
+        self.shrinkage_factor = shrinkage_factor
+        self.window = window
+        self.returns_df = stock_obj_arr_to_return_mat(self.stock_arr)
+        self.returns_shifted_df = self.returns_df.shift(1)
+        self.var_covar_ts = return_mat_to_rolling_var_covar_dict(self.returns_df, 
+                                    window=self.window, 
+                                    shrinkage_factor=self.shrinkage_factor)
+        self.inv_var_covar_ts = invert_var_covar_dict(var_covar_ts_dict=self.var_covar_ts)
+        self.weights_df = self.build_weights()
         
+    def build_weights(self):
+        weights_dict = {}
+        for dt, Sig_inv in self.inv_var_covar_ts.items():
+            # for a given day, construct the weights of your protfolio
+            Sig = self.var_covar_ts[dt]
+            w = MVOpt_L_Min_Var(Sig = Sig, Sig_inv = Sig_inv)
+            weights_dict[dt] = w
+        weights_df = pd.DataFrame(weights_dict).T
+        return weights_df    
+
+    
 class SimpleBlackLitterman(object):
 
     def __init__(self, stock_arr, signal_func_arr, signal_view_ret_arr,
