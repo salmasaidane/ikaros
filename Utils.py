@@ -98,10 +98,22 @@ def Rolling_Regression( Y_ts, X_ts_arr, window=42):
     return output_dict
 
 
+def _DEP_align_date_index(obj_1, obj_2):
+    idx = obj_1.index.intersection(obj_2.index)
+    return obj_1.loc[idx], obj_2.loc[idx]
+    
 
-
-
-
+def align_date_index(obj_arr):
+    # build index intersection of all objects
+    # Use index to filter all objects
+    idx = None
+    for obj in obj_arr:
+        if idx is None:
+            idx = obj.index
+        else:
+            idx = idx.intersection(obj.index)
+    return [obj.loc[idx] for obj in obj_arr]
+    
 
 
 

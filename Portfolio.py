@@ -12,8 +12,10 @@ from Stock import Stock
 from scipy.stats import norm
 
 def normalize (x):
+    #Scaling positive values so that they sum up to 1
     x[x>0.001] = x[x>0.001] / x[x>0.001].sum()
-    x[x<0.001] = x[x<0.001] / - x[x<0.001].sum()
+    #Scaling negative values so that they sum up to -1
+    x[x<-0.001] = x[x<-0.001] / - x[x<-0.001].sum()
     return x
 
 def stock_obj_arr_to_return_mat(stock_obj_arr):
@@ -39,6 +41,8 @@ def return_mat_to_rolling_var_covar_dict(returns_mat, window=126,
         ret_mat = returns_mat.iloc[i:i+window, :]
         var_cov = ret_mat.cov() * 252
         # Apply shrinkage factor
+        # Reduce the off_diagonal terms => cov but not var
+        # Easier to generate inv matrix
         var_cov = var_cov * shrinkage_factor + \
                   (1.0-shrinkage_factor)*np.diag(np.diag(var_cov))
         var_covar_ts[dt] = var_cov
@@ -56,7 +60,7 @@ def MVOpt_LS_Fixed_risk(r, Sig, s, Sig_inv = None):
     # r is the returns vector for a given day
     # Sig is the var_covar mat for a given day
     # s is a fixed level of risk for the portfolio
-    # Given a returns vector, a var_covar matrix, and a specified level of rsk,
+    # Given a returns vector, a var_covar matrix, and a specified level of risk,
     # we want to construct a Long Short Portfolio that maximizes returns with respect 
     # to weights such that the sum of weights is = 0 (constraint 1)
     # and the variance if the portfolio is equal to s (constarint 2)
@@ -75,7 +79,9 @@ def MVOpt_LS_Fixed_risk(r, Sig, s, Sig_inv = None):
     return w
   
 def MVOpt_LS_Fixed_risk_beta(r, Sig, s, beta, Sig_inv = None):
-
+    # adding 3rd constraint: weights * beta = 0 => hedging portfolio
+    # beta vector same shape as returns, for a given day, we have a vector of betas
+    # and a vector of returns
     if Sig_inv is None:
         Sig_inv = inv(Sig) 
     o = np.ones_like(r)
@@ -114,6 +120,7 @@ class MeanVarianceOptimization(object):
     def build_weights(self):
         weights_dict = {}
         for dt, Sig_inv in self.inv_var_covar_ts.items():
+            # for a given day, construct the weights of your protfolio
             r = self.expected_returns_df.loc[dt,:]
             Sig = self.var_covar_ts[dt]
             w = MVOpt_LS_Fixed_risk(r = r, Sig = Sig, s = self.s, Sig_inv = Sig_inv)

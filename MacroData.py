@@ -43,7 +43,12 @@ def get_Fama_French_ts(series_name):
     return F_F_series
  
 
- 
+def get_Fama_French_Mkt_Return():
+    df = get_Fama_French_df()
+    Mkt_Return_ts = df['Mkt-RF'] + df['RF'] 
+    return Mkt_Return_ts
+
+
     
  
     
